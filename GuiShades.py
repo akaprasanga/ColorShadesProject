@@ -46,10 +46,12 @@ class WidgetGallery(QDialog):
 
     def connect_signals(self):
         self.openfile_dialog_btn.clicked.connect(self.openfile_dialog)
+        self.process_image_btn.clicked.connect(self.process_image)
+        self.reset_list_btn.clicked.connect(self.reset_color_list)
 
     def init_variables(self):
-        self.current_img_path = 'E:\Work\StructureTranferProject\Makalu\Colors Extracted from Swing and Weave Designs and Enlarged\Color_12.Large.jpg'
-        self.current_img = np.array(Image.open(self.current_img_path))
+        self.current_img_path = 'E:\Work\ColorShadesProject\Color_12.Large.png'
+        self.current_img = np.array(Image.open(self.current_img_path).convert('RGB'))
         self.render_image(self.current_img, self.input_scene)
         self.choosed_color_list = []
         self.colorShadesObj = ColorShades()
@@ -59,7 +61,7 @@ class WidgetGallery(QDialog):
 
         self.process_image_btn = QPushButton("Process Image")
         self.openfile_dialog_btn = QPushButton('Open Image')
-
+        self.reset_list_btn = QPushButton("Reset List")
         self.color_list_view = QListWidget()
         self.shades_lbl = QLabel()
         self.time_label = QLabel()
@@ -68,6 +70,9 @@ class WidgetGallery(QDialog):
         layout.addWidget(self.openfile_dialog_btn, 0 , 0, 2, 0)
         layout.addWidget(self.color_list_view, 2, 0)
         layout.addWidget(self.shades_lbl, 3, 0)
+
+        layout.addWidget(self.reset_list_btn, 6, 0, 2, 0)
+
         layout.addWidget(self.process_image_btn, 10, 0, 2, 0)
         layout.addWidget(self.time_label, 11,0,2,0)
 
@@ -100,13 +105,10 @@ class WidgetGallery(QDialog):
         itm = QListWidgetItem(str(self.current_img[y, x]))
         itm.setIcon(QIcon(self.create_tile(self.current_img[y, x])))
         self.color_list_view.addItem(itm)
-        self.choosed_color_list.append(tuple(self.current_img[y, x]))
-        hsv_img = Image.fromarray(self.current_img).convert('HSV')
+        # self.choosed_color_list.append(tuple(self.current_img[y, x]))
+        hsv_img = Image.fromarray(self.current_img).convert('RGB')
         choosed_hsv = hsv_img.getpixel((x,y))
-        shades_img, shades_array = self.colorShadesObj.create_shades_of_color(choosed_hsv, 'a')
-        self.shades_lbl.setPixmap(QPixmap(self.numpy_to_pixmap(shades_img)))
-        self.colorShadesObj.replicate_image_with_new_shades(shades_array, self.current_img)
-        print('finised')
+        self.choosed_color_list.append(tuple(choosed_hsv))
 
     def openfile_dialog(self):
         filename = QFileDialog.getOpenFileName(self, "Select Image")
@@ -137,6 +139,17 @@ class WidgetGallery(QDialog):
         bytesPerLine = 3 * width
         qImg = QImage(img.data, width, height, bytesPerLine, QImage.Format_RGB888)
         return qImg
+
+    def process_image(self):
+        shades_img, shades_array = self.colorShadesObj.create_color_shades_rgb(color_list=self.choosed_color_list)
+        # self.shades_lbl.setPixmap(QPixmap(self.numpy_to_pixmap(shades_img)))
+        replaced_img = self.colorShadesObj.replicate_image_with_new_shades(shades_array, self.current_img)
+        self.render_image(replaced_img, self.output_scene)
+        print('finised')
+
+    def reset_color_list(self):
+        self.color_list_view.clear()
+        self.choosed_color_list.clear()
 
     @QtCore.pyqtSlot(list)
     def worker_thread_complete(self, returned_list):
